@@ -26,6 +26,7 @@ class CircleList extends StatefulWidget {
   final RadialDragEnd? onDragEnd;
   final AnimationSetting? animationSetting;
   final DragAngleRange? dragAngleRange;
+  bool? enableDrag;
 
   CircleList({
     this.innerRadius,
@@ -47,6 +48,7 @@ class CircleList extends StatefulWidget {
     this.animationSetting,
     this.rotateMode,
     this.dragAngleRange,
+    this.enableDrag
   });
 
   @override
@@ -163,7 +165,7 @@ class _CircleListState extends State<CircleList>
             child: Container(
               width: outerRadius * 2,
               height: outerRadius * 2,
-              child: RadialDragGestureDetector(
+              child: (widget.enableDrag ?? true) ? RadialDragGestureDetector(
                 stopRotate: rotateMode == RotateMode.stopRotate,
                 onRadialDragUpdate: (PolarCoord updateCoord) {
                   if (widget.onDragUpdate != null) {
@@ -188,39 +190,8 @@ class _CircleListState extends State<CircleList>
                   dragModel.end = dragModel.start;
                   dragModel.end!.angle = dragModel.angleDiff;
                 },
-                child: Transform.rotate(
-                  angle: isAnimationStop
-                      ? (dragModel.angleDiff + widget.initialAngle)
-                      : (-_animationRotate.value * pi * 2 +
-                          widget.initialAngle),
-                  child: Stack(
-                    children: List.generate(widget.children.length, (index) {
-                      final double childrenDiameter =
-                          2 * pi * betweenRadius / widget.children.length -
-                              widget.childrenPadding;
-                      Offset childPoint = getChildPoint(
-                          index,
-                          widget.children.length,
-                          betweenRadius,
-                          childrenDiameter);
-                      return Positioned(
-                        left: outerRadius + childPoint.dx,
-                        top: outerRadius + childPoint.dy,
-                        child: Transform.rotate(
-                          angle: widget.isChildrenVertical
-                              ? (-(dragModel.angleDiff) - widget.initialAngle)
-                              : ((dragModel.angleDiff) + widget.initialAngle),
-                          child: Container(
-                              width: childrenDiameter,
-                              height: childrenDiameter,
-                              alignment: Alignment.center,
-                              child: widget.children[index]),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-              ),
+                child: childWidget(betweenRadius, outerRadius),
+              ) : childWidget(betweenRadius, outerRadius),
             ),
           ),
           Positioned(
@@ -242,6 +213,41 @@ class _CircleListState extends State<CircleList>
                 ),
               ))
         ],
+      ),
+    );
+  }
+
+  Widget childWidget(double betweenRadius, double outerRadius) {
+    return Transform.rotate(
+      angle: isAnimationStop
+          ? (dragModel.angleDiff + widget.initialAngle)
+          : (-_animationRotate.value * pi * 2 +
+          widget.initialAngle),
+      child: Stack(
+        children: List.generate(widget.children.length, (index) {
+          final double childrenDiameter =
+              2 * pi * betweenRadius / widget.children.length -
+                  widget.childrenPadding;
+          Offset childPoint = getChildPoint(
+              index,
+              widget.children.length,
+              betweenRadius,
+              childrenDiameter);
+          return Positioned(
+            left: outerRadius + childPoint.dx,
+            top: outerRadius + childPoint.dy,
+            child: Transform.rotate(
+              angle: widget.isChildrenVertical
+                  ? (-(dragModel.angleDiff) - widget.initialAngle)
+                  : ((dragModel.angleDiff) + widget.initialAngle),
+              child: Container(
+                  width: childrenDiameter,
+                  height: childrenDiameter,
+                  alignment: Alignment.center,
+                  child: widget.children[index]),
+            ),
+          );
+        }),
       ),
     );
   }
