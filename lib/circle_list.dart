@@ -110,7 +110,7 @@ class _CircleListState extends State<CircleList>
     if (rotateMode == RotateMode.allRotate) {
       backgroundCircleAngle = dragModel.angleDiff + widget.initialAngle;
     }
-
+    bool isDisableRotate = !(widget.enableDrag ?? true) || rotateMode == RotateMode.stopRotate;
     return Container(
       width: outerRadius * 2,
       height: outerRadius * 2,
@@ -120,7 +120,7 @@ class _CircleListState extends State<CircleList>
             left: origin.dx,
             top: -origin.dy,
             child: RadialDragGestureDetector(
-              stopRotate: rotateMode == RotateMode.stopRotate,
+              stopRotate: isDisableRotate,
               onRadialDragUpdate: (PolarCoord updateCoord) {
                 if (widget.onDragUpdate != null) {
                   widget.onDragUpdate!(updateCoord);
@@ -165,33 +165,38 @@ class _CircleListState extends State<CircleList>
             child: Container(
               width: outerRadius * 2,
               height: outerRadius * 2,
-              child: (widget.enableDrag ?? true) ? RadialDragGestureDetector(
-                stopRotate: rotateMode == RotateMode.stopRotate,
-                onRadialDragUpdate: (PolarCoord updateCoord) {
-                  if (widget.onDragUpdate != null) {
-                    widget.onDragUpdate!(updateCoord);
-                  }
-                  setState(() {
-                    dragModel.getAngleDiff(updateCoord, dragAngleRange);
-                  });
-                },
-                onRadialDragStart: (PolarCoord startCoord) {
-                  if (widget.onDragStart != null) {
-                    widget.onDragStart!(startCoord);
-                  }
-                  setState(() {
-                    dragModel.start = startCoord;
-                  });
-                },
-                onRadialDragEnd: () {
-                  if (widget.onDragEnd != null) {
-                    widget.onDragEnd!();
-                  }
-                  dragModel.end = dragModel.start;
-                  dragModel.end!.angle = dragModel.angleDiff;
-                },
-                child: childWidget(betweenRadius, outerRadius),
-              ) : childWidget(betweenRadius, outerRadius),
+              child: Transform.rotate(
+                angle: isAnimationStop
+                    ? (dragModel.angleDiff + widget.initialAngle)
+                    : (-_animationRotate.value * pi * 2 +
+                    widget.initialAngle),
+                child: Stack(
+                  children: List.generate(widget.children.length, (index) {
+                    final double childrenDiameter =
+                        2 * pi * betweenRadius / widget.children.length -
+                            widget.childrenPadding;
+                    Offset childPoint = getChildPoint(
+                        index,
+                        widget.children.length,
+                        betweenRadius,
+                        childrenDiameter);
+                    return Positioned(
+                      left: outerRadius + childPoint.dx,
+                      top: outerRadius + childPoint.dy,
+                      child: Transform.rotate(
+                        angle: widget.isChildrenVertical
+                            ? (-(dragModel.angleDiff) - widget.initialAngle)
+                            : ((dragModel.angleDiff) + widget.initialAngle),
+                        child: Container(
+                            width: childrenDiameter,
+                            height: childrenDiameter,
+                            alignment: Alignment.center,
+                            child: widget.children[index]),
+                      ),
+                    );
+                  }),
+                ),
+              )
             ),
           ),
           Positioned(
@@ -213,41 +218,6 @@ class _CircleListState extends State<CircleList>
                 ),
               ))
         ],
-      ),
-    );
-  }
-
-  Widget childWidget(double betweenRadius, double outerRadius) {
-    return Transform.rotate(
-      angle: isAnimationStop
-          ? (dragModel.angleDiff + widget.initialAngle)
-          : (-_animationRotate.value * pi * 2 +
-          widget.initialAngle),
-      child: Stack(
-        children: List.generate(widget.children.length, (index) {
-          final double childrenDiameter =
-              2 * pi * betweenRadius / widget.children.length -
-                  widget.childrenPadding;
-          Offset childPoint = getChildPoint(
-              index,
-              widget.children.length,
-              betweenRadius,
-              childrenDiameter);
-          return Positioned(
-            left: outerRadius + childPoint.dx,
-            top: outerRadius + childPoint.dy,
-            child: Transform.rotate(
-              angle: widget.isChildrenVertical
-                  ? (-(dragModel.angleDiff) - widget.initialAngle)
-                  : ((dragModel.angleDiff) + widget.initialAngle),
-              child: Container(
-                  width: childrenDiameter,
-                  height: childrenDiameter,
-                  alignment: Alignment.center,
-                  child: widget.children[index]),
-            ),
-          );
-        }),
       ),
     );
   }
